@@ -122,8 +122,6 @@ def mainCalculation_V(NoOfPaths, NoOfSteps, T, mu, sigma, gamma, P0t, epsilon):
     return [t, P, implied_term_structure, M]
 
 
-asset_id = 33
-
 def Run_Vasicek(asset_id):
     P0t = lambda t: P0t_f(t, m_obs, Qb, ufr, alpha)
 
@@ -186,5 +184,3 @@ def Run_Vasicek(asset_id):
     out = pd.DataFrame(data = M,columns=t,index=multi_index)
 
     return out
-
-print(Run_Vasicek(33))

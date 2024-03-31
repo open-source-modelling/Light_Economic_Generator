@@ -4,9 +4,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from term_structure import *
 from HW_run import *
-from IPython.display import display
-
-asset_id = 11
 
 def Run_Hull_White(asset_id):
     # Zero coupon bond prices calculated using the assumed term structure
@@ -71,5 +68,3 @@ def Run_Hull_White(asset_id):
 
     return out
 
-
-print(Run_Hull_White(11))

@@ -118,9 +118,6 @@ def mainCalculation_BS(NoOfPaths, NoOfSteps, T, mu, sigma, P0t, epsilon):
     return [t, P, implied_term_structure, M]
 
 
-asset_id = 22
-
-
 def Run_Black_Sholes(asset_id):
     P0t = lambda t: P0t_f(t, m_obs, Qb, ufr, alpha)
 
@@ -182,5 +179,3 @@ def Run_Black_Sholes(asset_id):
     out = pd.DataFrame(data = M,columns=t,index=multi_index)
 
     return out
-
-print(Run_Black_Sholes(22))
