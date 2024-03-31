@@ -110,7 +110,7 @@ def P0t_f(t, m_obs, Qb, ufr, alpha):
         out = np.exp(-y0t*[t]) 
     return out
 
-def f0t(t, P0t, epsilon):
+def f0t(t: float, P0t: callable, epsilon: float)->float:
     """
     Calculates the instantaneous forward rate for time t given the zero-coupon
     bond price function P0t, using the centered finite difference method.
@@ -127,6 +127,8 @@ def f0t(t, P0t, epsilon):
         float: The instantaneous forward rate at time t, calculated using the 
             centered finite difference method.
     """
+    if epsilon <=0:
+        raise  ValueError("Epsilon must be positive")
     
     p_plus = P0t(t + epsilon)
     p_minus = P0t(t - epsilon)
