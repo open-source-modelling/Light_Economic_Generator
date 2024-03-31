@@ -1,4 +1,20 @@
-# Light_Economic_Generator
+<div align="center">
+  <a href="https://github.com/open-source-modelling" target="_blank">
+    <picture>
+      <img src="images/OSM_logo.jpeg" width=280 alt="Logo"/>
+    </picture>
+  </a>
+</div>
+
+
+<h1 align="center" style="border-botom: none">
+  <b>
+    🐍 Light Economic Generator 🐍     
+  </b>
+</h1>
+
+</br>
+
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by OSEM
 
 
