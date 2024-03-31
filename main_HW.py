@@ -4,14 +4,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from term_structure import *
 from HW_run import *
+from IPython.display import display
 
 asset_id = 11
 # Zero coupon bond prices calculated using the assumed term structure
 P0t = lambda t: P0t_f(t, m_obs, Qb, ufr, alpha)
 
 param_raw = pd.read_csv("Parameters.csv", sep=',', index_col=0)
-
-
 
 selected_param_file = param_raw["selected_param_file"][asset_id]
 selected_curves_file = param_raw["selected_curves_file"][asset_id]
@@ -25,7 +24,6 @@ sigma = param_raw["sigma"][asset_id]         # Hull-White volatility parameter s
 epsilon =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
                  # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                  # of 0.01 as a discreete approximation for a derivative)
-
 
 param_raw = pd.read_csv(selected_param_file, sep=',', index_col=0)
 
@@ -60,10 +58,16 @@ Qb = np.transpose(np.array(Qb.values))
 # Final comparison
 [t, P, implied_term_structure, M] = mainCalculation(NoOfPaths, NoOfSteps, T, a, sigma, P0t, epsilon)
 
-out = pd.DataFrame(data = M,columns=t)
+run_name = "HW-"+str(asset_id)
 
-print(out)
+multi_index_list = []
+for scenario in list(range(0,NoOfPaths)):
+    multi_index_list.append((run_name,scenario))
 
+multi_index = pd.MultiIndex.from_tuples(multi_index_list, names=('Run', 'Scenario_number'))
+out = pd.DataFrame(data = M,columns=t,index=multi_index)
+
+display(out)
 
 
 
