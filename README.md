@@ -23,13 +23,17 @@ As a prototype (NOT TESTED!!!!), LEG supports 3 models:
 
 The stochastic scenarios are available in two modelities. As an index (I) or as a discounting factor (D).
 
+The example of the input:
 |Calibration_ID	|model	|Type	|NoOfPaths	|NoOfSteps	|T	|a	|sigma	|epsilon	|Country	|selected_param_file	|selected_curves_file	|mu	|gamma|
-|11|	HW|	I|	1000|	600|	50|	0.02|	0.02|	0.01	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0|	0|
-|22|	BS|	D|	1000|	600|	50|	0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	0|
-|33|	V|	D|	1000|	600|	50|	0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	0.3|
+|--|--|--| -----| ---| ---| ----| ----| ----| --------| ---------------| -----------------| ----| ---|
+|11|HW|	I|	1000|	600|	50|	0.02|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	   0|	  0|
+|22|BS|	D|	1000|	600|	50|    0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	  0|
+|33| V|	D|	1000|	600|	50|	   0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	0.3|
 
 
+This prototype generates a csv that contains 1000 stochastic scenarios for each of the 3 rows and append it one bellow the other.
 
+The script that starts the prototype is (also in main.py):
 
 ```python
 import pandas as pd
