@@ -1,4 +1,4 @@
-Calibration_ID,model,NoOfPaths,NoOfSteps,T,a,sigma,epsilon,Country,selected_param_file,selected_curves_file,mu,gamma
-11,HW,20000,600,50,0.02,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0,0
-22,BS,20000,600,50,0,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0.02,0
-33,V,20000,600,50,0,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0.02,0.3
+Calibration_ID,model,Type,NoOfPaths,NoOfSteps,T,a,sigma,epsilon,Country,selected_param_file,selected_curves_file,mu,gamma
+11,HW,I,1000,600,50,0.02,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0,0
+22,BS,D,1000,600,50,0,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0.02,0
+33,V,D,1000,600,50,0,0.02,0.01,Slovenia,Param_no_VA.csv,Curves_no_VA.csv,0.02,0.3
