@@ -15,8 +15,18 @@
 
 </br>
 
-The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by OSEM
+The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by OSEM.
+As a prototype (NOT TESTED!!!!), LEG supports 3 models:
+ - Black Sholes
+ - Vasicek
+ - Hull-White
 
+The stochastic scenarios are available in two modelities. As an index (I) or as a discounting factor (D).
+
+|Calibration_ID	|model	|Type	|NoOfPaths	|NoOfSteps	|T	|a	|sigma	|epsilon	|Country	|selected_param_file	|selected_curves_file	|mu	|gamma|
+|11|	HW|	I|	1000|	600|	50|	0.02|	0.02|	0.01	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0|	0|
+|22|	BS|	D|	1000|	600|	50|	0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	0|
+|33|	V|	D|	1000|	600|	50|	0|	0.02|	0.01|	Slovenia|	Param_no_VA.csv|	Curves_no_VA.csv|	0.02|	0.3|
 
 
 
