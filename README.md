@@ -17,9 +17,12 @@
 
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by OSEM.
 As a prototype (NOT TESTED!!!!), LEG supports 3 models:
- - Black Sholes
- - Vasicek
- - Hull-White
+ - [Black Sholes](https://github.com/open-source-modelling/insurance_python/tree/main/black_sholes)
+ - [Vasicek](https://github.com/open-source-modelling/insurance_python/tree/main/vasicek_one_factor)
+ - [Hull-White](https://github.com/open-source-modelling/insurance_python/tree/main/hull_white_one_factor)
+
+
+
 
 The stochastic scenarios are available in two modelities. As an index (I) or as a discounting factor (D).
 
