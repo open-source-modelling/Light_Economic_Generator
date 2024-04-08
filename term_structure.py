@@ -1,8 +1,10 @@
 
 import numpy as np
 import pandas as pd
+from numpy import ndarray
 
-def sw_extrapolate(m_target, m_obs, Qb, ufr, alpha, epsilon = 0.00001):
+
+def sw_extrapolate(m_target: ndarray, m_obs: ndarray, Qb: ndarray, ufr: float, alpha: float, epsilon: float = 0.00001) -> ndarray:
     """
     Interpolate or extrapolate rates for targeted maturities using a 
     Smith-Wilson algorithm.
@@ -25,7 +27,7 @@ def sw_extrapolate(m_target, m_obs, Qb, ufr, alpha, epsilon = 0.00001):
         /12092019-technical_documentation.pdf
     """
     
-    def sw_heart(u, v, alpha):
+    def sw_heart(u: ndarray, v: ndarray, alpha: float) -> ndarray:
         """
         Calculate the heart of the Wilson function. sw_heart(u, v, alpha) 
         calculates the matrix H (Heart of the Wilson function) for maturities 
