@@ -153,44 +153,17 @@ def hull_white_main_calculation(num_paths: int, num_steps: int, end_time: int, m
     return [t, P, implied_term_structure, M, I]
 
 
-def set_up_hull_white(asset_id: int)->list:
-    # Zero coupon bond prices calculated using the assumed term structure
+def set_up_hull_white(asset_id: int, modeling_parameters: dict, zero_coupon_price: callable)->pd.DataFrame:
 
-    param_raw = pd.read_csv("Parameters.csv", sep=',', index_col=0)
-
-    selected_param_file = param_raw["selected_param_file"][asset_id]
-    selected_curves_file = param_raw["selected_curves_file"][asset_id]
-    country = param_raw["Country"][asset_id]
-
-    num_paths = param_raw["NoOfPaths"][asset_id] # Number of stochastic scenarios
-    num_steps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
-    end_time = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
-    a =  param_raw["a"][asset_id]                # Hull-White mean reversion parameter a
-    sigma = param_raw["sigma"][asset_id]         # Hull-White volatility parameter sigma
-    tolerance =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
+    num_paths = modeling_parameters["num_paths"] # Number of stochastic scenarios
+    num_steps = modeling_parameters["num_steps"] # Number of equidistand discrete modelling points (50*12 = 600)
+    end_time = modeling_parameters["end_time"]  # Time horizon in years (A time horizon of 50 years; T=50)
+    a =  modeling_parameters["a"]        # Hull-White mean reversion parameter a
+    sigma = modeling_parameters["sigma"]    # Hull-White volatility parameter sigma
+    tolerance =  modeling_parameters["tolerance"] # Incremental distance used to calculate for numerical approximation
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
-    type = param_raw["Type"][asset_id]
-
-    param_raw = pd.read_csv(selected_param_file, sep=',', index_col=0)
-
-    maturities_country_raw = param_raw.loc[:,country+"_Maturities"].iloc[6:]
-    param_country_raw = param_raw.loc[:,country + "_Values"].iloc[6:]
-    extra_param = param_raw.loc[:,country + "_Values"].iloc[:6]
-
-    relevant_positions = pd.notna(maturities_country_raw.values)
-    maturities_country = maturities_country_raw.iloc[relevant_positions]
-    Qb = param_country_raw.iloc[relevant_positions]
-    curve_raw = pd.read_csv(selected_curves_file, sep=',',index_col=0)
-    curve_country = curve_raw.loc[:,country]
-
-    # Curve related parameters
-    m_obs = np.transpose(np.array(maturities_country.values))
-    ufr = extra_param.iloc[3]/100
-    alpha = extra_param.iloc[4]
-    Qb = np.transpose(np.array(Qb.values))
-
-    zero_coupon_price = lambda t: calculate_zero_coupon_price(t, m_obs, Qb, ufr, alpha)
+    type = modeling_parameters["curve_type"]
 
     # Final comparison
     [t, P, implied_term_structure, M, I] = hull_white_main_calculation(num_paths, num_steps, end_time, a, sigma, zero_coupon_price, tolerance)
