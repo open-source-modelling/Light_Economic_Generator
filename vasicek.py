@@ -62,15 +62,15 @@ def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, funct
         if num_paths > 1:
             Z[:, iTime-1] = (Z[:, iTime-1]-np.mean(Z[:, iTime-1]))/np.std(Z[:, iTime-1])
             
-        # Apply the Euler-Maruyama discretisation scheme for the Hull-White model
+        # Apply the Euler-Maruyama discretisation scheme for the Vasicek model
         # at each time increment.
-        var_term = sigma**2 /(2*gamma)*(1-np.exp(-2*gamma*dt))
+        sd_term = np.power(sigma**2 /(2*gamma)*(1-np.exp(-2*gamma*dt)),0.5)
         
-        W[:, iTime] = W[:, iTime-1] + var_term*Z[:, iTime-1] 
-        rate_term = (1-np.exp(-gamma*dt))*mean_drift
+        W[:, iTime] = W[:, iTime-1] + sd_term*Z[:, iTime-1] 
         noise_term = np.exp(-gamma * dt) 
-
-        R[:, iTime] = rate_term + noise_term * R[:, iTime-1] + (W[:, iTime]-W[:, iTime-1])
+        rate_term = mean_drift*(1-np.exp(-gamma*dt))
+    
+        R[:, iTime] = R[:, iTime-1]*noise_term + rate_term + (W[:, iTime]-W[:, iTime-1])
 
 
     # Vectorized numeric integration using the Euler integration method .
@@ -130,13 +130,13 @@ def set_up_vasicek(asset_id: int) -> pd.DataFrame:
     selected_curves_file = param_raw["selected_curves_file"][asset_id]
     country = param_raw["Country"][asset_id]
 
-    NoOfPaths = param_raw["NoOfPaths"][asset_id] # Number of stochastic scenarios
-    NoOfSteps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
-    T = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
+    num_paths = param_raw["NoOfPaths"][asset_id] # Number of stochastic scenarios
+    num_steps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
+    end_time = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
     mu =  param_raw["mu"][asset_id]                # Hull-White mean reversion parameter a
     sigma = param_raw["sigma"][asset_id]         # Hull-White volatility parameter sigma
     gamma = param_raw["gamma"][asset_id]         # Hull-White volatility parameter sigma
-    epsilon =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
+    tolerance =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
     type = param_raw["Type"][asset_id]
@@ -162,7 +162,7 @@ def set_up_vasicek(asset_id: int) -> pd.DataFrame:
     zero_coupon_price = lambda t: calculate_zero_coupon_price(t, m_obs, Qb, ufr, alpha)
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = vasicek_main_calculation(NoOfPaths, NoOfSteps, T, mu, sigma, gamma, zero_coupon_price, epsilon)
+    [t, P, implied_term_structure, M, I] = vasicek_main_calculation(num_paths, num_steps, end_time, mu, sigma, gamma, zero_coupon_price, tolerance)
 
     run_name = "V-"+str(asset_id)
 
@@ -174,7 +174,7 @@ def set_up_vasicek(asset_id: int) -> pd.DataFrame:
         raise ValueError
 
     multi_index_list = []
-    for scenario in list(range(0,NoOfPaths)):
+    for scenario in list(range(0,num_paths)):
         multi_index_list.append((run_name,scenario))
 
     multi_index = pd.MultiIndex.from_tuples(multi_index_list, names=('Run', 'Scenario_number'))

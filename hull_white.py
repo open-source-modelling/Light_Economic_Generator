@@ -162,12 +162,12 @@ def set_up_hull_white(asset_id: int)->list:
     selected_curves_file = param_raw["selected_curves_file"][asset_id]
     country = param_raw["Country"][asset_id]
 
-    NoOfPaths = param_raw["NoOfPaths"][asset_id] # Number of stochastic scenarios
-    NoOfSteps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
-    T = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
+    num_paths = param_raw["NoOfPaths"][asset_id] # Number of stochastic scenarios
+    num_steps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
+    end_time = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
     a =  param_raw["a"][asset_id]                # Hull-White mean reversion parameter a
     sigma = param_raw["sigma"][asset_id]         # Hull-White volatility parameter sigma
-    epsilon =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
+    tolerance =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
     type = param_raw["Type"][asset_id]
@@ -193,7 +193,7 @@ def set_up_hull_white(asset_id: int)->list:
     zero_coupon_price = lambda t: calculate_zero_coupon_price(t, m_obs, Qb, ufr, alpha)
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = hull_white_main_calculation(NoOfPaths, NoOfSteps, T, a, sigma, zero_coupon_price, epsilon)
+    [t, P, implied_term_structure, M, I] = hull_white_main_calculation(num_paths, num_steps, end_time, a, sigma, zero_coupon_price, tolerance)
 
     if type=="I":
         outTmp = I
@@ -205,7 +205,7 @@ def set_up_hull_white(asset_id: int)->list:
     run_name = "HW-"+str(asset_id)
 
     multi_index_list = []
-    for scenario in list(range(0,NoOfPaths)):
+    for scenario in list(range(0,num_paths)):
         multi_index_list.append((run_name,scenario))
 
     multi_index = pd.MultiIndex.from_tuples(multi_index_list, names=('Run', 'Scenario_number'))
