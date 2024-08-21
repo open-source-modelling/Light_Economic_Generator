@@ -76,8 +76,6 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
     # Generate the single source of random noise.
     Z = np.random.normal(0.0, 1.0, [num_paths, num_steps])
 
-    # Initialize arrays
-    
     # Vector of time moments.
     time = np.linspace(0, end_time, num_steps+1) 
     
