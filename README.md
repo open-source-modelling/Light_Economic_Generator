@@ -17,7 +17,7 @@
 
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by Open-Source Modelling (OSM).
 
-LEG is a prototype. The Hull-White and Black-Scholes models have automated tests and a validation notebook. The Vasicek model is not yet validated.
+LEG is a prototype. The Hull-White and Vasicek models have automated tests, and all three models have a validation notebook.
 
 ## Models
 
@@ -26,7 +26,7 @@ LEG supports 3 models. All of them use the EIOPA risk-free term structure, calcu
 | Code | Model | What it simulates |
 |--|--|--|
 | `HW` | [Hull-White](https://github.com/open-source-modelling/insurance_python/tree/main/hull_white_one_factor) | Short rate $dr = (\theta(t) - a r) dt + \sigma dW$. The parameter $\theta(t)$ is fitted to the term structure, so the average simulated discount factor reproduces the input curve. |
-| `V` | [Vasicek](https://github.com/open-source-modelling/insurance_python/tree/main/vasicek_one_factor) | Short rate $dr = \gamma (\mu - r) dt + \sigma dW$. Only the starting rate $r(0)$ is taken from the term structure, so the scenarios do not reproduce the input curve. |
+| `V` | [Vasicek](https://github.com/open-source-modelling/insurance_python/tree/main/vasicek_one_factor) | Short rate $dr = \gamma (\mu - r) dt + \sigma dW$. Only the starting rate $r(0)$ is taken from the term structure, so the scenarios do not reproduce the input curve. With the example parameters, the Vasicek bond prices are up to 100 bps of yield away from the input curve. |
 | `BS` | [Black-Scholes](https://github.com/open-source-modelling/insurance_python/tree/main/black_sholes) | Equity index $dS = r(t) S dt + \sigma S dW$ with $S(0) = 1$. The drift $r(t)$ is the deterministic short rate implied by the term structure, so the discounted index is a martingale. |
 
 ## Output types
@@ -114,9 +114,12 @@ combined_run.to_csv("Output/run.csv")
 
 ## Tests and validation
 
- - `test_HW.py` contains the unit tests for the forward rate, the Hull-White parameter $\theta(t)$ and the Hull-White simulation. Run them with `pytest`.
+ - `test_HW.py` contains the unit tests for the forward rate, the Hull-White parameter $\theta(t)$ and the Hull-White simulation.
+ - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
+ - Run all tests with `pytest`.
  - `VALIDATION BLACK SHOLES.ipynb` validates the Black-Scholes model: the term structure against the EIOPA published curve, deterministic checks, a martingale test and the distribution of the log return.
- - `VALIDATION HULL WHITE.ipynb` validates the Hull-White model.
+ - `VALIDATION HULL WHITE.ipynb` validates the Hull-White model: the term structure against the EIOPA published curve, deterministic checks, a martingale test, the distribution of the short rate and closed-form prices of bonds and bond options.
+ - `VALIDATION VASICEK.ipynb` validates the Vasicek model: the term structure against the EIOPA published curve, deterministic checks, closed-form bond prices, the distribution of the short rate and closed-form prices of future bonds and bond options. It also shows how far the Vasicek bond prices are from the input curve.
 
 ## Other files
 

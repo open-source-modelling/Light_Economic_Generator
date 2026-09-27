@@ -87,13 +87,12 @@ def test_vasicek_zero_volatility_short_rate(zero_coupon_bond_prices):
     assert np.max(np.abs(deterministic["R"] - expected)) < 1e-12
 
 def test_vasicek_zero_volatility_discount_factor(zero_coupon_bond_prices):
-    # Without noise, the discount factor is exp(-integral of the short rate). The tolerance
-    # allows for the trapezoid rule used for the integration.
+    # Without noise, the discount factor is exactly exp(-integral of the short rate)
     deterministic = calculate_vasicek_paths(10, 600, 50, zero_coupon_bond_prices, MU, 0.0, GAMMA, TOLERANCE)
     t = deterministic["time"]
     r0 = deterministic["R"][0, 0]
     expected = np.exp(-(MU * t + (r0 - MU) * (1 - np.exp(-GAMMA * t)) / GAMMA))
-    assert np.max(np.abs(deterministic["M"] / expected - 1)) < 1e-5
+    assert np.max(np.abs(deterministic["M"] / expected - 1)) < 1e-12
 
 # Distribution of the short rate
 
@@ -196,3 +195,12 @@ def test_vasicek_paths_invalid_input(zero_coupon_bond_prices, parameters):
     valid.update(parameters)
     with pytest.raises(ValueError):
         calculate_vasicek_paths(function_zero_coupon_price=zero_coupon_bond_prices, **valid)
+
+def test_vasicek_discount_factor_does_not_depend_on_time_step(zero_coupon_bond_prices):
+    # The discount factor is sampled exactly, so its expectation matches the closed-form
+    # bond price for any number of steps
+    for num_steps in [5, 500]:
+        np.random.seed(0)
+        coarse = calculate_vasicek_paths(20000, num_steps, 10, zero_coupon_bond_prices, MU, SIGMA, GAMMA, TOLERANCE)
+        expected = vasicek_bond_price(coarse["R"][0, 0], 10)
+        assert abs(z_score(coarse["M"][:, -1], expected)) < Z_SCORE_MAX

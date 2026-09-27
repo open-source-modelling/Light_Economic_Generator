@@ -257,37 +257,56 @@ def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, funct
     # r(0) = f(0,0) = - partial derivative of log(P_mkt(0, tolerance) w.r.t tolerance)
     r0 = calculate_instantaneous_forward_rate(tolerance, function_zero_coupon_price, tolerance)
 
-    # Generate the single source of random noise.
+    # Generate two independent sources of random noise. The first drives the short 
+    # rate, the second the part of its integral that is independent of the short rate.
     Z = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    Z2 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
 
     # Vector of time moments.
     time = np.linspace(0, end_time, num_steps+1)
     dt = end_time/float(num_steps) # Size of increments between two steps
 
-    # Initialize array with interest rates
-    R = np.zeros([num_paths, num_steps+1])
-
-    # First interest rate equals the instantaneous forward (spot)
-    # rate at time 0.
-    R[:, 0] = r0
+    # Stochastic part x(t) of the short rate and its integral over [0, t].
+    x = np.zeros([num_paths, num_steps+1])
+    integral_x = np.zeros([num_paths, num_steps+1])
 
     # Constants of the exact transition over one time step.
-    decay = np.exp(-gamma * dt)                                       # Decay of the previous rate
-    mean_reversion_term = mean_drift*(1-decay)                        # Pull towards the long-term mean
-    sd_term = np.sqrt(sigma**2/(2*gamma)*(1-np.exp(-2*gamma*dt)))     # Standard deviation of the shock
+    decay = np.exp(-gamma * dt)                                       # Decay of the previous value of x
+    sd_term = np.sqrt(sigma**2/(2*gamma)*(1-np.exp(-2*gamma*dt)))     # Standard deviation of the shock to x
+
+    # Variance of the integral of x over one time step and its covariance with x,
+    # divided by sigma^2.
+    var_integral = (dt - 2.0*(1.0-decay)/gamma + (1.0-np.exp(-2.0*gamma*dt))/(2.0*gamma))/gamma**2
+    cov_x_integral = (1.0-decay)**2/(2.0*gamma**2)
+
+    # Cholesky decomposition of the covariance matrix.
+    loading_x = np.sqrt((1-np.exp(-2*gamma*dt))/(2*gamma))
+    loading_integral_1 = cov_x_integral/loading_x
+    loading_integral_2 = np.sqrt(max(var_integral - loading_integral_1**2, 0.0))
 
     for iTime in range(1, num_steps+1): # For each time increment
         # Making sure the samples from the normal distribution have a mean of 0
         # and variance 1
         if num_paths > 1:
             Z[:, iTime-1] = (Z[:, iTime-1]-np.mean(Z[:, iTime-1]))/np.std(Z[:, iTime-1])
+            Z2[:, iTime-1] = (Z2[:, iTime-1]-np.mean(Z2[:, iTime-1]))/np.std(Z2[:, iTime-1])
 
-        # Apply the exact transition of the Vasicek model at each time increment.
-        R[:, iTime] = R[:, iTime-1]*decay + mean_reversion_term + sd_term*Z[:, iTime-1]
+        # Apply the exact transition of x and of its integral at each time increment.
+        x_previous = x[:, iTime-1]
+        x[:, iTime] = x_previous*decay + sd_term*Z[:, iTime-1]
+        integral_step = x_previous*(1.0-decay)/gamma + sigma*(loading_integral_1*Z[:, iTime-1] + loading_integral_2*Z2[:, iTime-1])
+        integral_x[:, iTime] = integral_x[:, iTime-1] + integral_step
 
-    # Vectorized numeric integration of the short rate using the trapezoid rule.
-    M = np.exp(-0.5 * (R[:, :-1] + R[:, 1:]) * dt)
-    M = np.insert(M, 0, 1, axis=1).cumprod(axis=1)
+    # Deterministic part of the short rate and its integral.
+    deterministic_rate = mean_drift + (r0 - mean_drift)*np.exp(-gamma*time)
+    integral_deterministic_rate = mean_drift*time + (r0 - mean_drift)*(1-np.exp(-gamma*time))/gamma
+
+    # Short rate. The first interest rate equals the instantaneous forward (spot)
+    # rate at time 0.
+    R = deterministic_rate + x
+
+    # Discount factor D(t) = exp(-integral of the short rate over [0, t]).
+    M = np.exp(-integral_deterministic_rate - integral_x)
     I = 1/M
     # Output is a dictionary with time moments, the interest rate paths, the discount
     # factors and the bank account values.
@@ -344,6 +363,7 @@ def set_up_vasicek(asset_id: int, modeling_parameters: dict, zero_coupon_price: 
     scenarios = pd.DataFrame(data = outTmp, columns=t, index=multi_index)
 
     return scenarios
+
 def smith_wilson_extrapolate_yield_curve(target_maturities: ndarray, observed_maturities: ndarray, calibration_vector: ndarray, ultimate_forward_rate: float, convergence_speed: float, tolerance: float = 0.00001) -> ndarray:
     """
     Interpolate or extrapolate rates for targeted maturities using a 
