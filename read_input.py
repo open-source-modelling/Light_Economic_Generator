@@ -14,9 +14,9 @@ def read_model_input(asset_id: int)->list:
     num_steps = param_raw["NoOfSteps"][asset_id] # Number of equidistand discrete modelling points (50*12 = 600)
     end_time = param_raw["T"][asset_id]                 # Time horizon in years (A time horizon of 50 years; T=50)
     a =  param_raw["a"][asset_id]                # Hull-White mean reversion parameter a
-    mu =  param_raw["mu"][asset_id]                # Hull-White mean reversion parameter a
-    sigma = param_raw["sigma"][asset_id]         # Hull-White volatility parameter sigma
-    gamma = param_raw["gamma"][asset_id]         # Hull-White volatility parameter sigma
+    mu =  param_raw["mu"][asset_id]                # Vasicek long-term mean parameter mu
+    sigma = param_raw["sigma"][asset_id]         # Volatility parameter sigma
+    gamma = param_raw["gamma"][asset_id]         # Vasicek mean reversion speed parameter gamma
     tolerance =  param_raw["epsilon"][asset_id]     # Incremental distance used to calculate for numerical approximation
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
