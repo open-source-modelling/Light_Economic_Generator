@@ -40,7 +40,7 @@ The stochastic scenarios are available in two modalities, as an index (I) or as 
 
 ## Input
 
-Each row of `Parameters.csv` specifies one run. The example input:
+Each row of `data/Parameters.csv` specifies one run. The input files it refers to (`selected_param_file` and `selected_curves_file`) are also stored in the folder `data`. The example input:
 
 | Calibration_ID | model | Type | NoOfPaths | NoOfSteps | T | a | sigma | epsilon | Country | selected_param_file | selected_curves_file | mu | gamma |
 |--|--|--|--|--|--|--|--|--|--|--|--|--|--|
@@ -67,26 +67,49 @@ Each row of `Parameters.csv` specifies one run. The example input:
 
 ## Output
 
-The generator writes all scenarios into `Output/run.csv`, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps.
+The generator writes all scenarios into `Output/run.csv` in the root folder of the repository, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps.
 
 The example input generates 10000 scenarios for each of the 3 rows. The resulting file is about 340 MB.
+
+## Folder structure
+
+```
+Light_Economic_Generator/
+├── code/                 Model code and the script that runs the generator
+├── notebooks/            Validation notebooks
+├── unit_tests/           Unit tests
+├── data/                 Input files
+│   ├── Parameters.csv        Run specifications
+│   ├── Param_no_VA.csv       Smith-Wilson calibration published by EIOPA
+│   └── Curves_no_VA.csv      Spot rates published by EIOPA
+├── Output/               Generated scenarios (created by the generator, not in git)
+└── pytest.ini            Test configuration (tests in unit_tests, code in code)
+```
 
 ## Getting started
 
 LEG requires Python with `numpy` and `pandas`. The validation notebooks also require `matplotlib` and Jupyter, and the tests require `pytest`.
 
-The script that starts the prototype is (also in main.py):
+Run the generator from the root folder of the repository with:
+
+```
+python code/main.py
+```
+
+The input files are read from the folder `data` and the output is written to the folder `Output`. Both paths are relative to the root folder of the repository, so the script can also be started from any other folder.
+
+The script that starts the prototype is (`code/main.py`):
 
 ```python
 import os
 import pandas as pd
-from read_input import read_model_input
+from read_input import read_model_input, REPOSITORY_ROOT, DATA_FOLDER
 from term_structure import calculate_zero_coupon_price
 from black_sholes import set_up_black_sholes
 from vasicek import set_up_vasicek
 from hull_white import set_up_hull_white
 
-param_raw = pd.read_csv("Parameters.csv", sep=',', index_col=0)
+param_raw = pd.read_csv(os.path.join(DATA_FOLDER, "Parameters.csv"), sep=',', index_col=0)
 
 combined_run = []
 
@@ -108,20 +131,23 @@ for run_id in param_raw.index:
     else:
         combined_run = run
 
-os.makedirs("Output", exist_ok=True)
-combined_run.to_csv("Output/run.csv")
+# The output is written to the folder "Output" in the root folder of the repository.
+output_folder = os.path.join(REPOSITORY_ROOT, "Output")
+os.makedirs(output_folder, exist_ok=True)
+combined_run.to_csv(os.path.join(output_folder, "run.csv"))
 ```
 
 ## Tests and validation
 
+The unit tests are in the folder `unit_tests`:
+
  - `test_HW.py` contains the unit tests for the forward rate, the Hull-White parameter $\theta(t)$ and the Hull-White simulation.
  - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
- - Run all tests with `pytest`.
+
+Run all tests from the root folder of the repository with `pytest`.
+
+The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `code`:
+
  - `VALIDATION BLACK SHOLES.ipynb` validates the Black-Scholes model: the term structure against the EIOPA published curve, deterministic checks, a martingale test and the distribution of the log return.
  - `VALIDATION HULL WHITE.ipynb` validates the Hull-White model: the term structure against the EIOPA published curve, deterministic checks, a martingale test, the distribution of the short rate and closed-form prices of bonds and bond options.
  - `VALIDATION VASICEK.ipynb` validates the Vasicek model: the term structure against the EIOPA published curve, deterministic checks, closed-form bond prices, the distribution of the short rate and closed-form prices of future bonds and bond options. It also shows how far the Vasicek bond prices are from the input curve.
-
-## Other files
-
- - `all.py` contains the complete code in a single file, used as a source for GPT helpers.
- - `RAG/` contains the code as a notebook and as HTML, used for retrieval-augmented generation.
