@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from read_input import read_model_input, REPOSITORY_ROOT, DATA_FOLDER
 from term_structure import calculate_zero_coupon_price
-from black_sholes import set_up_black_sholes
+from black_scholes import set_up_black_scholes
 from vasicek import set_up_vasicek
 from hull_white import set_up_hull_white
 
@@ -17,7 +17,7 @@ for run_id in param_raw.index:
     if modeling_parameters["run_type"] == "HW":
         run = set_up_hull_white(run_id, modeling_parameters, zero_coupon_price)        
     elif modeling_parameters["run_type"] == "BS":
-        run = set_up_black_sholes(run_id, modeling_parameters, zero_coupon_price)
+        run = set_up_black_scholes(run_id, modeling_parameters, zero_coupon_price)
     elif modeling_parameters["run_type"] == "V":
         run = set_up_vasicek(run_id, modeling_parameters, zero_coupon_price)
     else:
@@ -28,7 +28,7 @@ for run_id in param_raw.index:
     else:
         combined_run = run
 
-# The output is written to the folder "Output" in the root folder of the repository.
-output_folder = os.path.join(REPOSITORY_ROOT, "Output")
+# The output is written to the folder "output" in the root folder of the repository.
+output_folder = os.path.join(REPOSITORY_ROOT, "output")
 os.makedirs(output_folder, exist_ok=True)
 combined_run.to_csv(os.path.join(output_folder, "run.csv"))

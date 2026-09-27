@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-def calculate_black_sholes_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, volatility: float) -> dict:
+def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, volatility: float) -> dict:
     """
-    Simulates a series of stochastic equity index paths using the Black-Sholes model
+    Simulates a series of stochastic equity index paths using the Black-Scholes model
     under the risk-neutral measure. The drift of the index is the deterministic
     short rate implied by the term structure:
 
@@ -23,7 +23,7 @@ def calculate_black_sholes_paths(num_paths: int, num_steps: int, end_time: int, 
         function_zero_coupon_price (function): function that calculates the price of a
             zero coupon bond issued at time 0 that matures at time t, with a
             notional amount 1 and discounted using the assumed term structure.
-        volatility (float): volatility parameter sigma of the Black-Sholes model.
+        volatility (float): volatility parameter sigma of the Black-Scholes model.
 
     Returns:
         dict: A dictionary containing arrays with time steps, index paths,
@@ -69,9 +69,9 @@ def calculate_black_sholes_paths(num_paths: int, num_steps: int, end_time: int, 
     return paths
 
 
-def black_sholes_main_calculation(num_paths: int, num_steps: int, end_time: int, volatility: float, function_zero_coupon_price: callable) -> list:
+def black_scholes_main_calculation(num_paths: int, num_steps: int, end_time: int, volatility: float, function_zero_coupon_price: callable) -> list:
     """
-    Simulates the Black-Sholes equity index and calculates the average
+    Simulates the Black-Scholes equity index and calculates the average
     discounted index, which should be equal to 1 at every time step.
 
     Args:
@@ -79,7 +79,7 @@ def black_sholes_main_calculation(num_paths: int, num_steps: int, end_time: int,
         num_steps (int): number of time steps per path.
         end_time (float): end of the modelling window (in years).
             (Ex. a modelling window of 50 years means T=50).
-        volatility (float): volatility parameter sigma of the Black-Sholes model.
+        volatility (float): volatility parameter sigma of the Black-Scholes model.
         function_zero_coupon_price (function): function that calculates the price of a
             zero coupon bond issued at time 0 that matures at time t, with a
             notional amount 1 and discounted using the assumed term structure.
@@ -94,7 +94,7 @@ def black_sholes_main_calculation(num_paths: int, num_steps: int, end_time: int,
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
     """
 
-    paths = calculate_black_sholes_paths(num_paths, num_steps, end_time, function_zero_coupon_price, volatility)
+    paths = calculate_black_scholes_paths(num_paths, num_steps, end_time, function_zero_coupon_price, volatility)
     M = paths["M"]
     t = paths["time"]
     I = paths["I"]
@@ -104,17 +104,17 @@ def black_sholes_main_calculation(num_paths: int, num_steps: int, end_time: int,
     return [t, P, implied_term_structure, M, I]
 
 
-def set_up_black_sholes(asset_id: int, modeling_parameters: dict, zero_coupon_price: callable)->pd.DataFrame:
+def set_up_black_scholes(asset_id: int, modeling_parameters: dict, zero_coupon_price: callable)->pd.DataFrame:
 
 
     num_paths = modeling_parameters["num_paths"]  # Number of stochastic scenarios
     num_steps = modeling_parameters["num_steps"]  # Number of equidistand discrete modelling points (50*12 = 600)
     end_time = modeling_parameters["end_time"]    # Time horizon in years (A time horizon of 50 years; T=50)
-    sigma = modeling_parameters["sigma"]          # Black-Sholes volatility parameter sigma
+    sigma = modeling_parameters["sigma"]          # Black-Scholes volatility parameter sigma
     type = modeling_parameters["curve_type"]
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = black_sholes_main_calculation(num_paths, num_steps, end_time, sigma, zero_coupon_price)
+    [t, P, implied_term_structure, M, I] = black_scholes_main_calculation(num_paths, num_steps, end_time, sigma, zero_coupon_price)
 
     run_name = "BS-"+str(asset_id)
 

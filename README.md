@@ -67,7 +67,7 @@ Each row of `data/Parameters.csv` specifies one run. The input files it refers t
 
 ## Output
 
-The generator writes all scenarios into `Output/run.csv` in the root folder of the repository, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps.
+The generator writes all scenarios into `output/run.csv` in the root folder of the repository, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps.
 
 The example input generates 10000 scenarios for each of the 3 rows. The resulting file is about 340 MB.
 
@@ -75,15 +75,15 @@ The example input generates 10000 scenarios for each of the 3 rows. The resultin
 
 ```
 Light_Economic_Generator/
-├── code/                 Model code and the script that runs the generator
+├── src/                  Model code and the script that runs the generator
 ├── notebooks/            Validation notebooks
 ├── unit_tests/           Unit tests
 ├── data/                 Input files
 │   ├── Parameters.csv        Run specifications
 │   ├── Param_no_VA.csv       Smith-Wilson calibration published by EIOPA
 │   └── Curves_no_VA.csv      Spot rates published by EIOPA
-├── Output/               Generated scenarios (created by the generator, not in git)
-└── pytest.ini            Test configuration (tests in unit_tests, code in code)
+├── output/               Generated scenarios (created by the generator, not in git)
+└── pytest.ini            Test configuration (tests in unit_tests, code in src)
 ```
 
 ## Getting started
@@ -93,19 +93,19 @@ LEG requires Python with `numpy` and `pandas`. The validation notebooks also req
 Run the generator from the root folder of the repository with:
 
 ```
-python code/main.py
+python src/main.py
 ```
 
-The input files are read from the folder `data` and the output is written to the folder `Output`. Both paths are relative to the root folder of the repository, so the script can also be started from any other folder.
+The input files are read from the folder `data` and the output is written to the folder `output`. Both paths are relative to the root folder of the repository, so the script can also be started from any other folder.
 
-The script that starts the prototype is (`code/main.py`):
+The script that starts the prototype is (`src/main.py`):
 
 ```python
 import os
 import pandas as pd
 from read_input import read_model_input, REPOSITORY_ROOT, DATA_FOLDER
 from term_structure import calculate_zero_coupon_price
-from black_sholes import set_up_black_sholes
+from black_scholes import set_up_black_scholes
 from vasicek import set_up_vasicek
 from hull_white import set_up_hull_white
 
@@ -120,7 +120,7 @@ for run_id in param_raw.index:
     if modeling_parameters["run_type"] == "HW":
         run = set_up_hull_white(run_id, modeling_parameters, zero_coupon_price)        
     elif modeling_parameters["run_type"] == "BS":
-        run = set_up_black_sholes(run_id, modeling_parameters, zero_coupon_price)
+        run = set_up_black_scholes(run_id, modeling_parameters, zero_coupon_price)
     elif modeling_parameters["run_type"] == "V":
         run = set_up_vasicek(run_id, modeling_parameters, zero_coupon_price)
     else:
@@ -131,8 +131,8 @@ for run_id in param_raw.index:
     else:
         combined_run = run
 
-# The output is written to the folder "Output" in the root folder of the repository.
-output_folder = os.path.join(REPOSITORY_ROOT, "Output")
+# The output is written to the folder "output" in the root folder of the repository.
+output_folder = os.path.join(REPOSITORY_ROOT, "output")
 os.makedirs(output_folder, exist_ok=True)
 combined_run.to_csv(os.path.join(output_folder, "run.csv"))
 ```
@@ -141,13 +141,14 @@ combined_run.to_csv(os.path.join(output_folder, "run.csv"))
 
 The unit tests are in the folder `unit_tests`:
 
- - `test_HW.py` contains the unit tests for the forward rate, the Hull-White parameter $\theta(t)$ and the Hull-White simulation.
+ - `test_term_structure.py` contains the unit tests for the instantaneous forward rate.
+ - `test_hull_white.py` contains the unit tests for the Hull-White parameter $\theta(t)$ and the Hull-White simulation, including input validation.
  - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
 
 Run all tests from the root folder of the repository with `pytest`.
 
-The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `code`:
+The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `src`:
 
- - `VALIDATION BLACK SHOLES.ipynb` validates the Black-Scholes model: the term structure against the EIOPA published curve, deterministic checks, a martingale test and the distribution of the log return.
- - `VALIDATION HULL WHITE.ipynb` validates the Hull-White model: the term structure against the EIOPA published curve, deterministic checks, a martingale test, the distribution of the short rate and closed-form prices of bonds and bond options.
- - `VALIDATION VASICEK.ipynb` validates the Vasicek model: the term structure against the EIOPA published curve, deterministic checks, closed-form bond prices, the distribution of the short rate and closed-form prices of future bonds and bond options. It also shows how far the Vasicek bond prices are from the input curve.
+ - `validation_black_scholes.ipynb` validates the Black-Scholes model: the term structure against the EIOPA published curve, deterministic checks, a martingale test and the distribution of the log return.
+ - `validation_hull_white.ipynb` validates the Hull-White model: the term structure against the EIOPA published curve, deterministic checks, a martingale test, the distribution of the short rate and closed-form prices of bonds and bond options.
+ - `validation_vasicek.ipynb` validates the Vasicek model: the term structure against the EIOPA published curve, deterministic checks, closed-form bond prices, the distribution of the short rate and closed-form prices of future bonds and bond options. It also shows how far the Vasicek bond prices are from the input curve.

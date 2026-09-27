@@ -12,7 +12,7 @@ env/
 .ipynb_checkpoints/
 
 # Generated scenarios (created by main.py)
-Output/
+output/
 
 # OS and editor files
 .DS_Store

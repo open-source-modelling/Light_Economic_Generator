@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-# Root folder of the repository, one level above the folder "code".
+# Root folder of the repository, one level above the folder "src".
 REPOSITORY_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The input files (Parameters.csv and the files it refers to) are stored in the folder "data".
