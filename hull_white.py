@@ -39,7 +39,23 @@ def calculate_hull_white_theta(mean_reversion_rate: float, volatility: float, fu
 
 def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_reversion_rate: float, volatility: float, tolerance: float)->dict:
     """
-    Simulates a series of stochastic interest rate paths using the Hull-White model.
+    Simulates a series of stochastic interest rate paths using the Hull-White model
+
+        dr(t) = (theta(t) - a r(t)) dt + sigma dW(t)
+
+    with the exact simulation scheme. The short rate is split into a deterministic 
+    and a stochastic part, r(t) = alpha(t) + x(t), where
+
+        alpha(t) = f(0,t) + sigma^2/(2 a^2) (1-exp(-a t))^2
+        dx(t) = -a x(t) dt + sigma dW(t),   x(0) = 0.
+
+    The pair (x(t_i), integral of x over [t_i-1, t_i]) is normally distributed 
+    given x(t_i-1), and is sampled exactly. The discount factor is 
+
+        D(t) = P(0,t) exp(-V(t)/2 - integral of x over [0, t])
+
+    where V(t) is the variance of the integral of x. The scheme has no 
+    discretisation error for any time step, and E[D(t)] = P(0,t).
 
     Args:
         num_paths (int): number of paths to simulate.
@@ -53,20 +69,24 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
             the Hull-White model.
         volatility (float): volatility parameter sigma of the Hull-White model.
         tolerance (float): size of the increment used for finite 
-            difference approximation.
+            difference approximation of the instantaneous forward rate.
 
     Returns:
         dict: A dictionary containing arrays with time steps, interest rate paths, 
-            and bond prices.
+            discount factors and bank account values.
             time (array): array of time steps.
             R (array): array of interest rate paths with 
               shape (num_paths, num_steps+1).
-            M (array): array of bond prices with 
+            M (array): array of discount factors with 
+              shape (num_paths, num_steps+1).
+            I (array): array of bank account values (1/M) with 
               shape (num_paths, num_steps+1).
 
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
 
-    Original inspiration: https://www.youtube.com/watch?v=BIZdwUDbnDo
+    Exact scheme: P. Glasserman (2003), Monte Carlo Methods in Financial Engineering, 
+    Springer, section 3.3 "Gaussian Short Rate Models". See also V. Ostrovski (2013), 
+    Efficient and Exact Simulation of the Hull-White Model, SSRN 2304848.
     """
     if num_paths < 1:
         raise ValueError("Number of paths must be at least 1")
@@ -74,55 +94,67 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
         raise ValueError("Number of steps must be at least 1")
     if end_time <= 0:
         raise ValueError("End time T must be positive")
+    if mean_reversion_rate == 0:
+        raise ValueError("Mean reversion rate a must not be 0. The limit a = 0 (Ho-Lee model) is not supported")
+    if mean_reversion_rate < 0:
+        raise ValueError("Mean reversion rate a must be positive")
     if volatility < 0:
         raise ValueError("Volatility sigma must not be negative")
     if tolerance <= 0:
         raise ValueError("Tolerance epsilon must be positive")
 
-    # Initial instantaneous forward rate at time t-> 0 (also spot rate at time 0).
-    # r(0) = f(0,0) = - partial derivative of log(P_mkt(0, epsilon) w.r.t epsilon)
-    r0 = calculate_instantaneous_forward_rate(tolerance, function_zero_coupon_price, tolerance)
-
-    # Calculation of theta = partial derivative of f(0,t) w.r.t. t
-    # + a * f(0,t) + sigma^2/(2 a) * (1-exp(-2*a*t)).
-    theta = calculate_hull_white_theta(mean_reversion_rate, volatility, function_zero_coupon_price, tolerance)
-    
-    # Generate the single source of random noise.
-    Z = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    a = mean_reversion_rate
 
     # Vector of time moments.
     time = np.linspace(0, end_time, num_steps+1) 
-    
-    W = np.zeros([num_paths, num_steps+1])
-    
-    # Initialize array with interest rate increments
-    R = np.zeros([num_paths, num_steps+1]) 
-    
-    # First interest rate equals the instantaneous forward (spot) 
-    # rate at time 0.
-    R[:, 0] = r0 
     dt = end_time/float(num_steps) # Size of increments between two steps
-    
+
+    # Deterministic part of the short rate:
+    # alpha(t) = f(0,t) + sigma^2/(2 a^2) (1-exp(-a t))^2.
+    forward_rate = calculate_instantaneous_forward_rate(time, function_zero_coupon_price, tolerance)
+    alpha = forward_rate + volatility**2/(2.0*a**2)*(1.0-np.exp(-a*time))**2
+
+    # Moments of x(t_i) and of the integral of x over one time step, given x(t_i-1), 
+    # divided by sigma^2.
+    decay = np.exp(-a*dt)
+    var_x = (1.0-np.exp(-2.0*a*dt))/(2.0*a)
+    var_integral = (dt - 2.0*(1.0-decay)/a + (1.0-np.exp(-2.0*a*dt))/(2.0*a))/a**2
+    cov_x_integral = (1.0-decay)**2/(2.0*a**2)
+
+    # Cholesky decomposition of the covariance matrix.
+    loading_x = np.sqrt(var_x)
+    loading_integral_1 = cov_x_integral/loading_x
+    loading_integral_2 = np.sqrt(max(var_integral - loading_integral_1**2, 0.0))
+
+    # Generate two independent sources of random noise.
+    Z1 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    Z2 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+
+    # Making sure the samples from the normal distribution have a mean of 0 
+    # and variance 1 at each time increment.
+    if num_paths > 1:
+        Z1 = (Z1 - np.mean(Z1, axis=0)) / np.std(Z1, axis=0)
+        Z2 = (Z2 - np.mean(Z2, axis=0)) / np.std(Z2, axis=0)
+
+    x = np.zeros([num_paths, num_steps+1])
+    integral_x = np.zeros([num_paths, num_steps+1])
+
     for iTime in range(1, num_steps+1): # For each time increment
-        # Making sure the samples from the normal distribution have a mean of 0 
-        # and variance 1
-        if num_paths > 1:
-            Z[:, iTime-1] = (Z[:, iTime-1]-np.mean(Z[:, iTime-1]))/np.std(Z[:, iTime-1])
-            
-        # Apply the Euler-Maruyama discretisation scheme for the Hull-White model
-        # at each time increment.
-        W[:, iTime] = W[:, iTime-1] + np.power(dt, 0.5)*Z[:, iTime-1] 
-        noise_term = volatility* (W[:, iTime]-W[:, iTime-1])
-        rate_term = (theta(time[iTime-1])-mean_reversion_rate*R[:, iTime-1])*dt
-        R[:, iTime] = R[:, iTime-1] + rate_term + noise_term
-    
-    # Vectorized numeric integration using the Euler integration method .
-    M = np.exp(-0.5 * (R[:, :-1] + R[:, 1:]) * dt) 
-    M = np.insert(M, 0, 1, axis=1).cumprod(axis=1)
+        x_previous = x[:, iTime-1]
+        x[:, iTime] = x_previous*decay + volatility*loading_x*Z1[:, iTime-1]
+        integral_step = x_previous*(1.0-decay)/a + volatility*(loading_integral_1*Z1[:, iTime-1] + loading_integral_2*Z2[:, iTime-1])
+        integral_x[:, iTime] = integral_x[:, iTime-1] + integral_step
+
+    R = alpha + x
+
+    # Variance of the integral of x over [0, t].
+    variance_integral = volatility**2/a**2*(time - 2.0*(1.0-np.exp(-a*time))/a + (1.0-np.exp(-2.0*a*time))/(2.0*a))
+
+    # Discount factor D(t) = P(0,t) exp(-V(t)/2 - integral of x).
+    M = function_zero_coupon_price(time)*np.exp(-0.5*variance_integral - integral_x)
     I = 1/M
-    # Output is a dataframe with time moment, the interest rate path and the price
-    # of a zero coupon bond issued at time 0 that matures at the selected time 
-    # moment with a notional value of 1.
+    # Output is a dictionary with time moments, the interest rate paths, the discount
+    # factors and the bank account values.
     paths = {"time":time, "R":R, "M":M, "I":I}
     return paths
 
