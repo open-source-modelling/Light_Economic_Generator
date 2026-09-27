@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated scenarios (created by main.py)
+Output/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

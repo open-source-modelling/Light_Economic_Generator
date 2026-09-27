@@ -23,7 +23,11 @@ def calculate_hull_white_theta(mean_reversion_rate: float, volatility: float, fu
 
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
     """
-    
+    if mean_reversion_rate == 0:
+        raise ValueError("Mean reversion rate a must not be 0. The limit a = 0 (Ho-Lee model) is not supported")
+    if mean_reversion_rate < 0:
+        raise ValueError("Mean reversion rate a must be positive")
+
     def theta(t:float)->float:
         insta_forward_term = (calculate_instantaneous_forward_rate(t+tolerance, function_zero_coupon_price, tolerance) 
                                          -calculate_instantaneous_forward_rate(t-tolerance,function_zero_coupon_price,tolerance))/(2.0*tolerance)
@@ -47,7 +51,7 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
             notional amount 1 and discounted using the assumed term structure.
         mean_reversion_rate (float): mean reversion speed parameter a of 
             the Hull-White model.
-        sigma (float): volatility parameter sigma of the Hull-White model.
+        volatility (float): volatility parameter sigma of the Hull-White model.
         tolerance (float): size of the increment used for finite 
             difference approximation.
 
@@ -63,14 +67,24 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
 
     Original inspiration: https://www.youtube.com/watch?v=BIZdwUDbnDo
-    """       
-    
+    """
+    if num_paths < 1:
+        raise ValueError("Number of paths must be at least 1")
+    if num_steps < 1:
+        raise ValueError("Number of steps must be at least 1")
+    if end_time <= 0:
+        raise ValueError("End time T must be positive")
+    if volatility < 0:
+        raise ValueError("Volatility sigma must not be negative")
+    if tolerance <= 0:
+        raise ValueError("Tolerance epsilon must be positive")
+
     # Initial instantaneous forward rate at time t-> 0 (also spot rate at time 0).
     # r(0) = f(0,0) = - partial derivative of log(P_mkt(0, epsilon) w.r.t epsilon)
     r0 = calculate_instantaneous_forward_rate(tolerance, function_zero_coupon_price, tolerance)
-    
-    # Calculation of theta = 1/a * partial derivative of f(0,t) w.r.t. t 
-    # + f(0,t) + sigma^2/(2 a^2)* (1-exp(-2*a*t)).
+
+    # Calculation of theta = partial derivative of f(0,t) w.r.t. t
+    # + a * f(0,t) + sigma^2/(2 a) * (1-exp(-2*a*t)).
     theta = calculate_hull_white_theta(mean_reversion_rate, volatility, function_zero_coupon_price, tolerance)
     
     # Generate the single source of random noise.
