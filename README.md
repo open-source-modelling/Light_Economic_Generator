@@ -17,7 +17,7 @@
 
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by Open-Source Modelling (OSM).
 
-LEG is a prototype. The Hull-White and Vasicek models have automated tests, and all three models have a validation notebook.
+LEG is a prototype. The term structure, the Hull-White model and the Vasicek model have unit tests, and all three models have a validation notebook.
 
 ## Models
 
@@ -40,7 +40,7 @@ The stochastic scenarios are available in two modalities, as an index (I) or as 
 
 ## Input
 
-Each row of `data/Parameters.csv` specifies one run. The input files it refers to (`selected_param_file` and `selected_curves_file`) are also stored in the folder `data`. The example input:
+Each row of `data/Parameters.csv` specifies one run. The input files it refers to (`selected_param_file` and `selected_curves_file`) are also stored in the folder `data`, and are given by their file name only. The example input:
 
 | Calibration_ID | model | Type | NoOfPaths | NoOfSteps | T | a | sigma | epsilon | Country | selected_param_file | selected_curves_file | mu | gamma |
 |--|--|--|--|--|--|--|--|--|--|--|--|--|--|
@@ -75,15 +75,28 @@ The example input generates 10000 scenarios for each of the 3 rows. The resultin
 
 ```
 Light_Economic_Generator/
-├── src/                  Model code and the script that runs the generator
-├── notebooks/            Validation notebooks
-├── unit_tests/           Unit tests
-├── data/                 Input files
-│   ├── Parameters.csv        Run specifications
-│   ├── Param_no_VA.csv       Smith-Wilson calibration published by EIOPA
-│   └── Curves_no_VA.csv      Spot rates published by EIOPA
-├── output/               Generated scenarios (created by the generator, not in git)
-└── pytest.ini            Test configuration (tests in unit_tests, code in src)
+├── src/                              Model code and the script that runs the generator
+│   ├── main.py                           Runs all rows of Parameters.csv and writes the output
+│   ├── read_input.py                     Reads Parameters.csv and the EIOPA input files
+│   ├── term_structure.py                 Smith-Wilson term structure and forward rates
+│   ├── black_scholes.py                  Black-Scholes equity index
+│   ├── hull_white.py                     Hull-White short rate
+│   └── vasicek.py                        Vasicek short rate
+├── notebooks/                        Validation notebooks
+│   ├── validation_black_scholes.ipynb
+│   ├── validation_hull_white.ipynb
+│   └── validation_vasicek.ipynb
+├── unit_tests/                       Unit tests
+│   ├── test_term_structure.py
+│   ├── test_hull_white.py
+│   └── test_vasicek.py
+├── data/                             Input files
+│   ├── Parameters.csv                    Run specifications
+│   ├── Param_no_VA.csv                   Smith-Wilson calibration published by EIOPA
+│   └── Curves_no_VA.csv                  Spot rates published by EIOPA
+├── output/                           Generated scenarios (created by the generator, not in git)
+├── images/                           Logo used in this README
+└── pytest.ini                        Test configuration (tests in unit_tests, code in src)
 ```
 
 ## Getting started
@@ -145,9 +158,19 @@ The unit tests are in the folder `unit_tests`:
  - `test_hull_white.py` contains the unit tests for the Hull-White parameter $\theta(t)$ and the Hull-White simulation, including input validation.
  - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
 
-Run all tests from the root folder of the repository with `pytest`.
+Run all tests from the root folder of the repository with:
 
-The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `src`:
+```
+pytest
+```
+
+The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `src`. They can be started from the folder `notebooks` or from the root folder of the repository, for example with:
+
+```
+jupyter notebook notebooks/validation_hull_white.ipynb
+```
+
+The notebooks:
 
  - `validation_black_scholes.ipynb` validates the Black-Scholes model: the term structure against the EIOPA published curve, deterministic checks, a martingale test and the distribution of the log return.
  - `validation_hull_white.ipynb` validates the Hull-White model: the term structure against the EIOPA published curve, deterministic checks, a martingale test, the distribution of the short rate and closed-form prices of bonds and bond options.

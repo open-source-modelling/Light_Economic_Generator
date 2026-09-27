@@ -11,7 +11,7 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Generated scenarios (created by main.py)
+# Generated scenarios (created by src/main.py)
 output/
 
 # OS and editor files
