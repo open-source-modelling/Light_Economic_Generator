@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from numpy import ndarray
@@ -23,6 +24,7 @@ def main():
             combined_run = pd.concat([combined_run,run])
         else:
             combined_run = run
+    os.makedirs("Output", exist_ok=True)
     combined_run.to_csv("Output/run.csv")
 def calculate_black_sholes_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_drift: float, volatility: float, tolerance: float):
      # Initial instantaneous forward rate at time t-> 0 (also spot rate at time 0).
@@ -368,9 +370,9 @@ def smith_wilson_extrapolate_yield_curve(target_maturities: ndarray, observed_ma
     p = np.exp(-np.log(1 + ultimate_forward_rate) * target_maturities) + np.diag(np.exp(-np.log(1 + ultimate_forward_rate) 
                                                      * target_maturities)) @ h @ calibration_vector 
     
-    # If the first element of target_maturities is zero, replace it with time "epsilon" 
-    # to avoid division by zero error.
-    target_maturities[0] = tolerance if target_maturities[0] == 0 else target_maturities[0]
+    # Replace zero maturities with time "epsilon" to avoid division by zero error.
+    # Works on a copy so the caller's array is not modified.
+    target_maturities = np.where(target_maturities == 0, tolerance, target_maturities)
 
     return p ** (-1 / target_maturities) - 1
 def calculate_zero_coupon_price(maturity, target_maturities, calibration_vector, ultimate_forward_rate: float, tolerance: float):
@@ -415,10 +417,10 @@ def calculate_zero_coupon_price(maturity, target_maturities, calibration_vector,
     """
     if isinstance(maturity, np.ndarray): # If the input is a numpy array
         y0t = smith_wilson_extrapolate_yield_curve(np.transpose(maturity), target_maturities, calibration_vector, ultimate_forward_rate, tolerance)
-        price = np.exp(-y0t*np.transpose(maturity)) 
+        price = (1 + y0t) ** (-np.transpose(maturity))
     else:# If the input is a single maturity given as a number
         y0t = smith_wilson_extrapolate_yield_curve(np.transpose([maturity]), target_maturities, calibration_vector, ultimate_forward_rate, tolerance)
-        price = np.exp(-y0t*[maturity]) 
+        price = (1 + y0t) ** (-np.array([maturity]))
     return price
 
 def calculate_instantaneous_forward_rate(time: float, function_zero_coupon_price: callable, tolerance: float)->float:

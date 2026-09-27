@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from read_input import read_model_input
 from term_structure import calculate_zero_coupon_price
@@ -27,4 +28,5 @@ for run_id in param_raw.index:
     else:
         combined_run = run
 
+os.makedirs("Output", exist_ok=True)
 combined_run.to_csv("Output/run.csv")
