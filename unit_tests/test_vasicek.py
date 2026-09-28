@@ -44,6 +44,14 @@ def test_vasicek_initial_values(paths):
     assert np.all(paths["M"][:, 0] == 1)
     assert np.allclose(paths["I"] * paths["M"], 1)
 
+def test_vasicek_initial_short_rate_on_non_flat_curve(non_flat_curve):
+    # r(0) is the forward rate f(0,0) of the curve, not a spot rate. It is calculated with a
+    # finite difference with step epsilon, which can move it by about epsilon * df(0,0)/dt.
+    epsilon = TOLERANCE
+    paths = calculate_vasicek_paths(10, 12, 1, non_flat_curve["price"], MU, SIGMA, GAMMA, epsilon, rng=0)
+    tolerance = 2 * epsilon * abs(non_flat_curve["forward_derivative"](0.0))
+    assert np.allclose(paths["R"][:, 0], non_flat_curve["forward"](0.0), atol=tolerance, rtol=0)
+
 def test_vasicek_single_path(zero_coupon_bond_prices):
     np.random.seed(0)
     single = calculate_vasicek_paths(1, 12, 1, zero_coupon_bond_prices, MU, SIGMA, GAMMA, TOLERANCE)

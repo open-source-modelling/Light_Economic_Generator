@@ -1,12 +1,15 @@
 import os
 import pandas as pd
-from read_input import read_model_input, REPOSITORY_ROOT, DATA_FOLDER
+from read_input import read_model_input, validate_model_input, REPOSITORY_ROOT, DATA_FOLDER
 from term_structure import calculate_zero_coupon_price
 from black_scholes import set_up_black_scholes
 from vasicek import set_up_vasicek
 from hull_white import set_up_hull_white
 
 param_raw = pd.read_csv(os.path.join(DATA_FOLDER, "Parameters.csv"), sep=',', index_col=0)
+
+# All runs are checked before the first simulation starts.
+validate_model_input(param_raw)
 
 combined_run = []
 

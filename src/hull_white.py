@@ -37,7 +37,7 @@ def calculate_hull_white_theta(mean_reversion_rate: float, volatility: float, fu
         return insta_forward_term + forward_term + variance_term
     return theta
 
-def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_reversion_rate: float, volatility: float, tolerance: float)->dict:
+def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_reversion_rate: float, volatility: float, tolerance: float, rng: int | np.random.Generator | None = None)->dict:
     """
     Simulates a series of stochastic interest rate paths using the Hull-White model
 
@@ -68,11 +68,14 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
         mean_reversion_rate (float): mean reversion speed parameter a of 
             the Hull-White model.
         volatility (float): volatility parameter sigma of the Hull-White model.
-        tolerance (float): size of the increment used for finite 
+        tolerance (float): size of the increment used for finite
             difference approximation of the instantaneous forward rate.
+        rng (int, Generator or None): seed or numpy random number generator used to
+            generate the paths. The same seed gives the same paths. If None, the global
+            numpy random state is used (set with np.random.seed).
 
     Returns:
-        dict: A dictionary containing arrays with time steps, interest rate paths, 
+        dict: A dictionary containing arrays with time steps, interest rate paths,
             discount factors and bank account values.
             time (array): array of time steps.
             R (array): array of interest rate paths with 
@@ -126,9 +129,11 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
     loading_integral_1 = cov_x_integral/loading_x
     loading_integral_2 = np.sqrt(max(var_integral - loading_integral_1**2, 0.0))
 
-    # Generate two independent sources of random noise.
-    Z1 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
-    Z2 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    # Generate two independent sources of random noise. Without a seed or generator,
+    # the global numpy random state is used.
+    random_source = np.random if rng is None else np.random.default_rng(rng)
+    Z1 = random_source.normal(0.0, 1.0, [num_paths, num_steps])
+    Z2 = random_source.normal(0.0, 1.0, [num_paths, num_steps])
 
     # Making sure the samples from the normal distribution have a mean of 0 
     # and variance 1 at each time increment.
@@ -159,7 +164,7 @@ def calculate_hull_white_paths(num_paths: int, num_steps: int, end_time: int, fu
     return paths
 
 
-def hull_white_main_calculation(num_paths: int, num_steps: int, end_time: int, mean_reversion_rate: float, volatility:float, function_zero_coupon_price: callable, tolerance: float):
+def hull_white_main_calculation(num_paths: int, num_steps: int, end_time: int, mean_reversion_rate: float, volatility:float, function_zero_coupon_price: callable, tolerance: float, rng: int | np.random.Generator | None = None):
     """
     Calculates and plots the prices of zero-coupon bonds (ZCB) calculated 
     using the Hull-White model`s analytical formula and the Monte Carlo simulation.
@@ -174,7 +179,9 @@ def hull_white_main_calculation(num_paths: int, num_steps: int, end_time: int, m
            at time 0 that matures at time t, with a notional amount 1 and discounted using
            the assumed term structure.
         tolerance (float): the size of the increment  used for finite difference approximation.
-    
+        rng (int, Generator or None): seed or numpy random number generator. If None,
+            the global numpy random state is used (set with np.random.seed).
+
     Returns:
         t : time increments.
         P : average of the sumulated paths.
@@ -183,7 +190,7 @@ def hull_white_main_calculation(num_paths: int, num_steps: int, end_time: int, m
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
     """
  
-    paths = calculate_hull_white_paths(num_paths, num_steps, end_time, function_zero_coupon_price, mean_reversion_rate, volatility, tolerance)
+    paths = calculate_hull_white_paths(num_paths, num_steps, end_time, function_zero_coupon_price, mean_reversion_rate, volatility, tolerance, rng)
     M = paths["M"]
     t = paths["time"]
     I = paths["I"]
@@ -208,16 +215,17 @@ def set_up_hull_white(asset_id: int, modeling_parameters: dict, zero_coupon_pric
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
     type = modeling_parameters["curve_type"]
+    seed = modeling_parameters.get("seed") # Seed of the random number generator (None: different scenarios in every run)
+    if type not in ["I", "D"]:
+        raise ValueError(f"Output type must be I (index) or D (discount factor), not {type!r}")
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = hull_white_main_calculation(num_paths, num_steps, end_time, a, sigma, zero_coupon_price, tolerance)
+    [t, P, implied_term_structure, M, I] = hull_white_main_calculation(num_paths, num_steps, end_time, a, sigma, zero_coupon_price, tolerance, seed)
 
     if type=="I":
         outTmp = I
-    elif type=="D":
-        outTmp = M
     else:
-        raise ValueError
+        outTmp = M
 
     run_name = "HW-"+str(asset_id)
 

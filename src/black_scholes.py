@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, volatility: float) -> dict:
+def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, volatility: float, rng: int | np.random.Generator | None = None) -> dict:
     """
     Simulates a series of stochastic equity index paths using the Black-Scholes model
     under the risk-neutral measure. The drift of the index is the deterministic
@@ -24,6 +24,9 @@ def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int,
             zero coupon bond issued at time 0 that matures at time t, with a
             notional amount 1 and discounted using the assumed term structure.
         volatility (float): volatility parameter sigma of the Black-Scholes model.
+        rng (int, Generator or None): seed or numpy random number generator used to
+            generate the paths. The same seed gives the same paths. If None, the global
+            numpy random state is used (set with np.random.seed).
 
     Returns:
         dict: A dictionary containing arrays with time steps, index paths,
@@ -37,9 +40,19 @@ def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int,
 
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
     """
+    if num_paths < 1:
+        raise ValueError("Number of paths must be at least 1")
+    if num_steps < 1:
+        raise ValueError("Number of steps must be at least 1")
+    if end_time <= 0:
+        raise ValueError("End time T must be positive")
+    if volatility < 0:
+        raise ValueError("Volatility sigma must not be negative")
 
-    # Generate the single source of random noise.
-    Z = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    # Generate the single source of random noise. Without a seed or generator, the
+    # global numpy random state is used.
+    random_source = np.random if rng is None else np.random.default_rng(rng)
+    Z = random_source.normal(0.0, 1.0, [num_paths, num_steps])
 
     # Making sure the samples from the normal distribution have a mean of 0
     # and variance 1 at each time increment.
@@ -69,7 +82,7 @@ def calculate_black_scholes_paths(num_paths: int, num_steps: int, end_time: int,
     return paths
 
 
-def black_scholes_main_calculation(num_paths: int, num_steps: int, end_time: int, volatility: float, function_zero_coupon_price: callable) -> list:
+def black_scholes_main_calculation(num_paths: int, num_steps: int, end_time: int, volatility: float, function_zero_coupon_price: callable, rng: int | np.random.Generator | None = None) -> list:
     """
     Simulates the Black-Scholes equity index and calculates the average
     discounted index, which should be equal to 1 at every time step.
@@ -83,6 +96,8 @@ def black_scholes_main_calculation(num_paths: int, num_steps: int, end_time: int
         function_zero_coupon_price (function): function that calculates the price of a
             zero coupon bond issued at time 0 that matures at time t, with a
             notional amount 1 and discounted using the assumed term structure.
+        rng (int, Generator or None): seed or numpy random number generator. If None,
+            the global numpy random state is used (set with np.random.seed).
 
     Returns:
         t : time increments.
@@ -94,7 +109,7 @@ def black_scholes_main_calculation(num_paths: int, num_steps: int, end_time: int
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.
     """
 
-    paths = calculate_black_scholes_paths(num_paths, num_steps, end_time, function_zero_coupon_price, volatility)
+    paths = calculate_black_scholes_paths(num_paths, num_steps, end_time, function_zero_coupon_price, volatility, rng)
     M = paths["M"]
     t = paths["time"]
     I = paths["I"]
@@ -112,18 +127,19 @@ def set_up_black_scholes(asset_id: int, modeling_parameters: dict, zero_coupon_p
     end_time = modeling_parameters["end_time"]    # Time horizon in years (A time horizon of 50 years; T=50)
     sigma = modeling_parameters["sigma"]          # Black-Scholes volatility parameter sigma
     type = modeling_parameters["curve_type"]
+    seed = modeling_parameters.get("seed")        # Seed of the random number generator (None: different scenarios in every run)
+    if type not in ["I", "D"]:
+        raise ValueError(f"Output type must be I (index) or D (discount factor), not {type!r}")
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = black_scholes_main_calculation(num_paths, num_steps, end_time, sigma, zero_coupon_price)
+    [t, P, implied_term_structure, M, I] = black_scholes_main_calculation(num_paths, num_steps, end_time, sigma, zero_coupon_price, seed)
 
     run_name = "BS-"+str(asset_id)
 
     if type=="I":
         outTmp = I
-    elif type=="D":
-        outTmp = M
     else:
-        raise ValueError
+        outTmp = M
 
     multi_index_list = []
     for scenario in list(range(0,num_paths)):

@@ -17,7 +17,7 @@
 
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by Open-Source Modelling (OSM).
 
-LEG is a prototype. The term structure, the Hull-White model and the Vasicek model have unit tests, and all three models have a validation notebook.
+LEG is a prototype. The term structure and all three models have unit tests, and all three models have a validation notebook.
 
 ## Models
 
@@ -42,11 +42,11 @@ The stochastic scenarios are available in two modalities, as an index (I) or as 
 
 Each row of `data/Parameters.csv` specifies one run. The input files it refers to (`selected_param_file` and `selected_curves_file`) are also stored in the folder `data`, and are given by their file name only. The example input:
 
-| Calibration_ID | model | Type | NoOfPaths | NoOfSteps | T | a | sigma | epsilon | Country | selected_param_file | selected_curves_file | mu | gamma |
-|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
-| 11 | HW | I | 10000 | 600 | 50 | 0.05 | 0.008 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0 | 0 |
-| 22 | BS | I | 10000 | 600 | 50 | 0 | 0.2 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0 | 0 |
-| 33 | V | D | 10000 | 600 | 50 | 0 | 0.02 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0.02 | 0.3 |
+| Calibration_ID | model | Type | NoOfPaths | NoOfSteps | T | a | sigma | epsilon | Country | selected_param_file | selected_curves_file | mu | gamma | seed |
+|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+| 11 | HW | I | 10000 | 600 | 50 | 0.05 | 0.008 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0 | 0 | 1 |
+| 22 | BS | I | 10000 | 600 | 50 | 0 | 0.2 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0 | 0 | 2 |
+| 33 | V | D | 10000 | 600 | 50 | 0 | 0.02 | 0.01 | Slovenia | Param_no_VA.csv | Curves_no_VA.csv | 0.02 | 0.3 | 3 |
 
 | Column | Description | Used by |
 |--|--|--|
@@ -64,10 +64,13 @@ Each row of `data/Parameters.csv` specifies one run. The input files it refers t
 | `selected_curves_file` | Spot rates published by EIOPA. | All |
 | `mu` | Long-term mean of the short rate. | V |
 | `gamma` | Mean reversion speed. | V |
+| `seed` | Seed of the random number generator. The same seed gives the same scenarios in every run. If blank, the scenarios are different in every run. Give each row its own seed: rows with the same seed and the same number of paths and steps use the same random numbers. | All |
+
+Before the first simulation starts, the generator checks every row of `Parameters.csv` and stops with a single error that lists all the problems found, for example an unknown model or output type, a parameter outside its valid range, a missing input file or a country that is not in the input files. Only the parameters used by the model of a row are checked (column "Used by"). All rows must have the same `T` and `NoOfSteps`, because they are written into one table. Rows with the same seed give a warning.
 
 ## Output
 
-The generator writes all scenarios into `output/run.csv` in the root folder of the repository, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps.
+The generator writes all scenarios into `output/run.csv` in the root folder of the repository, with the runs appended one below the other. Each row is one scenario, indexed by `Run` (model code and calibration id, Ex. `HW-11`) and `Scenario_number`. The columns are the time points in years, from 0 to T in steps of T/NoOfSteps. If every row has a seed, running the generator again with the same input gives the same file.
 
 The example input generates 10000 scenarios for each of the 3 rows. The resulting file is about 340 MB.
 
@@ -89,7 +92,11 @@ Light_Economic_Generator/
 ├── unit_tests/                       Unit tests
 │   ├── test_term_structure.py
 │   ├── test_hull_white.py
-│   └── test_vasicek.py
+│   ├── test_vasicek.py
+│   ├── test_black_scholes.py
+│   ├── test_seed.py
+│   ├── test_input_validation.py
+│   └── conftest.py                       Shared test fixtures (a copy of the folder data, a non-flat curve)
 ├── data/                             Input files
 │   ├── Parameters.csv                    Run specifications
 │   ├── Param_no_VA.csv                   Smith-Wilson calibration published by EIOPA
@@ -116,13 +123,16 @@ The script that starts the prototype is (`src/main.py`):
 ```python
 import os
 import pandas as pd
-from read_input import read_model_input, REPOSITORY_ROOT, DATA_FOLDER
+from read_input import read_model_input, validate_model_input, REPOSITORY_ROOT, DATA_FOLDER
 from term_structure import calculate_zero_coupon_price
 from black_scholes import set_up_black_scholes
 from vasicek import set_up_vasicek
 from hull_white import set_up_hull_white
 
 param_raw = pd.read_csv(os.path.join(DATA_FOLDER, "Parameters.csv"), sep=',', index_col=0)
+
+# All runs are checked before the first simulation starts.
+validate_model_input(param_raw)
 
 combined_run = []
 
@@ -154,9 +164,14 @@ combined_run.to_csv(os.path.join(output_folder, "run.csv"))
 
 The unit tests are in the folder `unit_tests`:
 
- - `test_term_structure.py` contains the unit tests for the instantaneous forward rate.
- - `test_hull_white.py` contains the unit tests for the Hull-White parameter $\theta(t)$ and the Hull-White simulation, including input validation.
- - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
+ - `test_term_structure.py` contains the unit tests for the term structure: the spot rates of every curve in the EIOPA files compared to the published spot rates (Test 1 of the validation notebooks), and the instantaneous forward rate.
+ - `test_hull_white.py` contains the unit tests for the Hull-White parameter $\theta(t)$ and the Hull-White simulation, including the mean of the short rate and input validation.
+ - `test_vasicek.py` contains the unit tests for the Vasicek simulation: the output structure, the initial short rate, deterministic checks, the distribution of the short rate, closed-form prices of bonds and bond options, and input validation.
+ - `test_black_scholes.py` contains the unit tests for the Black-Scholes simulation: input validation, and the index without volatility.
+ - `test_seed.py` contains the unit tests for the seed of the random number generator, for all three models and for reading the seed from `Parameters.csv`.
+ - `test_input_validation.py` contains the unit tests for the checks of `Parameters.csv` before the first simulation, and for the check of the output type.
+
+Besides a flat curve, the tests use a non-flat curve with closed-form forward rates (Nelson-Siegel, defined in `conftest.py`). On a flat curve, the forward rate is equal to the spot rate and its derivative is 0, which would hide errors in both.
 
 Run all tests from the root folder of the repository with:
 

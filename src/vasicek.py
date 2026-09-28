@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from term_structure import calculate_instantaneous_forward_rate, calculate_zero_coupon_price
 
-def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_drift: float, sigma: float, gamma: float, tolerance: float)->dict:
+def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, function_zero_coupon_price: callable, mean_drift: float, sigma: float, gamma: float, tolerance: float, rng: int | np.random.Generator | None = None)->dict:
     """
     Simulates a series of stochastic interest rate paths using the Vasicek model
 
@@ -42,6 +42,9 @@ def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, funct
         gamma (float): mean reversion speed parameter gamma of the Vasicek model.
         tolerance (float): size of the increment used for finite
             difference approximation of the initial short rate.
+        rng (int, Generator or None): seed or numpy random number generator used to
+            generate the paths. The same seed gives the same paths. If None, the global
+            numpy random state is used (set with np.random.seed).
 
     Returns:
         dict: A dictionary containing arrays with time steps, interest rate paths,
@@ -80,8 +83,10 @@ def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, funct
 
     # Generate two independent sources of random noise. The first drives the short 
     # rate, the second the part of its integral that is independent of the short rate.
-    Z = np.random.normal(0.0, 1.0, [num_paths, num_steps])
-    Z2 = np.random.normal(0.0, 1.0, [num_paths, num_steps])
+    # Without a seed or generator, the global numpy random state is used.
+    random_source = np.random if rng is None else np.random.default_rng(rng)
+    Z = random_source.normal(0.0, 1.0, [num_paths, num_steps])
+    Z2 = random_source.normal(0.0, 1.0, [num_paths, num_steps])
 
     # Vector of time moments.
     time = np.linspace(0, end_time, num_steps+1)
@@ -135,7 +140,7 @@ def calculate_vasicek_paths(num_paths: int, num_steps: int, end_time: int, funct
     return paths
 
 
-def vasicek_main_calculation(num_paths: int, num_steps: int, end_time: int, mean_drift: float, sigma: float, gamma: float, function_zero_coupon_price: callable, tolerance: float)-> list:
+def vasicek_main_calculation(num_paths: int, num_steps: int, end_time: int, mean_drift: float, sigma: float, gamma: float, function_zero_coupon_price: callable, tolerance: float, rng: int | np.random.Generator | None = None)-> list:
     """
     Simulates the Vasicek model and calculates the average discount factor, 
     which is the Monte Carlo price of a zero-coupon bond (ZCB).
@@ -151,7 +156,9 @@ def vasicek_main_calculation(num_paths: int, num_steps: int, end_time: int, mean
            at time 0 that matures at time t, with a notional amount 1 and discounted using
            the assumed term structure.
         tolerance (float): the size of the increment  used for finite difference approximation.
-    
+        rng (int, Generator or None): seed or numpy random number generator. If None,
+            the global numpy random state is used (set with np.random.seed).
+
     Returns:
         t : time increments.
         P : average of the simulated discount factors.
@@ -162,7 +169,7 @@ def vasicek_main_calculation(num_paths: int, num_steps: int, end_time: int, mean
     Implemented by Gregor Fabjan from Open-Source Modelling on 13/04/2024.        
     """
  
-    paths = calculate_vasicek_paths(num_paths, num_steps, end_time, function_zero_coupon_price, mean_drift, sigma, gamma, tolerance)
+    paths = calculate_vasicek_paths(num_paths, num_steps, end_time, function_zero_coupon_price, mean_drift, sigma, gamma, tolerance, rng)
     M = paths["M"]
     t = paths["time"]
     I = paths["I"]
@@ -188,18 +195,19 @@ def set_up_vasicek(asset_id: int, modeling_parameters: dict, zero_coupon_price: 
                     # of for example the instantaneous spot rate (Ex. 0.01 will use an interval 
                     # of 0.01 as a discreete approximation for a derivative)
     type = modeling_parameters["curve_type"]
+    seed = modeling_parameters.get("seed")        # Seed of the random number generator (None: different scenarios in every run)
+    if type not in ["I", "D"]:
+        raise ValueError(f"Output type must be I (index) or D (discount factor), not {type!r}")
 
     # Final comparison
-    [t, P, implied_term_structure, M, I] = vasicek_main_calculation(num_paths, num_steps, end_time, mu, sigma, gamma, zero_coupon_price, tolerance)
+    [t, P, implied_term_structure, M, I] = vasicek_main_calculation(num_paths, num_steps, end_time, mu, sigma, gamma, zero_coupon_price, tolerance, seed)
 
     run_name = "V-"+str(asset_id)
 
     if type=="I":
         outTmp = I
-    elif type=="D":
-        outTmp = M
     else:
-        raise ValueError
+        outTmp = M
 
     multi_index_list = []
     for scenario in list(range(0,num_paths)):
