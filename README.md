@@ -13,6 +13,12 @@
   </b>
 </h1>
 
+<div align="center">
+  <a href="https://github.com/open-source-modelling/Light_Economic_Generator/actions/workflows/tests.yml">
+    <img src="https://github.com/open-source-modelling/Light_Economic_Generator/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests"/>
+  </a>
+</div>
+
 </br>
 
 The purpose of this repository is to create an open-source stochastic economic scenario generator using algorithms previously published by Open-Source Modelling (OSM).
@@ -103,6 +109,7 @@ Light_Economic_Generator/
 │   └── Curves_no_VA.csv                  Spot rates published by EIOPA
 ├── output/                           Generated scenarios (created by the generator, not in git)
 ├── images/                           Logo used in this README
+├── .github/workflows/tests.yml       Runs the unit tests on GitHub Actions
 └── pytest.ini                        Test configuration (tests in unit_tests, code in src)
 ```
 
@@ -178,6 +185,8 @@ Run all tests from the root folder of the repository with:
 ```
 pytest
 ```
+
+The tests also run on GitHub Actions (`.github/workflows/tests.yml`) on every push to `main` and on every pull request, with Python 3.11, 3.12, 3.13 and 3.14. The badge at the top of this README shows the result of the latest run on `main`.
 
 The validation notebooks are in the folder `notebooks`. They read the input files from the folder `data` and import the model code from the folder `src`. They can be started from the folder `notebooks` or from the root folder of the repository, for example with:
 
