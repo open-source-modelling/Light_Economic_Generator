@@ -1,0 +1,2 @@
+# Count notebooks as documentation, not code, in GitHub's language bar
+*.ipynb linguist-documentation
